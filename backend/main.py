@@ -1,11 +1,13 @@
 """FastAPI application — Retail AI Decision Engine."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from models.schemas import ProductRequest, AnalysisResponse
@@ -17,7 +19,12 @@ from services.gemini import generate_explanation
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIST_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "dist"))
+FRONTEND_ASSETS_DIR = os.path.join(FRONTEND_DIST_DIR, "assets")
+FRONTEND_INDEX_PATH = os.path.join(FRONTEND_DIST_DIR, "index.html")
+
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"))
 
 
 class AnalysisResponseWithBreakdown(AnalysisResponse):
@@ -46,6 +53,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if os.path.isdir(FRONTEND_ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSETS_DIR), name="assets")
+
+
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    """Serve built frontend entrypoint."""
+    if not os.path.isfile(FRONTEND_INDEX_PATH):
+        raise HTTPException(status_code=503, detail="Frontend build not found")
+    return FileResponse(FRONTEND_INDEX_PATH)
 
 
 @app.post("/analyze", response_model=AnalysisResponseWithBreakdown)
