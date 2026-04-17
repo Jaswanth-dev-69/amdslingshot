@@ -2,9 +2,11 @@
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 from models.schemas import ProductRequest, AnalysisResponse
 from logic.scoring import compute_score, score_to_decision
@@ -14,6 +16,8 @@ from services.gemini import generate_explanation
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 
 class AnalysisResponseWithBreakdown(AnalysisResponse):
